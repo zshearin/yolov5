@@ -25,3 +25,5 @@ Also worth noting - I think the y axis is the reverse of what I think it would b
 16 - is dog
 
 57 - is couch
+
+I think what I want to change is in 168-173 of detect.py - grab 16 and 57 and use that 
