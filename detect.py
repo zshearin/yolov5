@@ -46,6 +46,9 @@ from utils.general import (LOGGER, check_file, check_img_size, check_imshow, che
 from utils.plots import Annotator, colors, save_one_box
 from utils.torch_utils import select_device, time_sync
 
+import pygame
+import time 
+pygame.init()
 
 @torch.no_grad()
 def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
@@ -116,6 +119,11 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
     # Run inference
     model.warmup(imgsz=(1 if pt else bs, 3, *imgsz), half=half)  # warmup
     dt, seen = [0.0, 0.0, 0.0], 0
+    dogYLocationBottom = 0
+    couchYLocationBottom = 0
+    keyboardYLocationBottom = 0
+    tvYLocationBottom = 0
+
     for path, im, im0s, vid_cap, s in dataset:
         t1 = time_sync()
         im = torch.from_numpy(im).to(device)
@@ -159,16 +167,39 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
                 # Rescale boxes from img_size to im0 size
                 det[:, :4] = scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
 
+
                 # Print results
                 for c in det[:, -1].unique():
                     n = (det[:, -1] == c).sum()  # detections per class
                     s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
 
+                #keyboard and tv will change to dog and couch once I'm done testing
+                #easier to test positioning of my keyboard relative to my tv
+                #than picking up Jenny and placing her on the couch every time I'm 
+                #checking what I've done so far
                 # Write results
                 for *xyxy, conf, cls in reversed(det):
+                    c = int(cls)
+                    if c == 16:
+                       print("observed a dog. Location: ")
+                       dogYLocationBottom = int(xyxy[3])
+                    if c == 57:
+                       print("observed a couch")
+                       couchYLocationBottom = int(xyxy[3])
+                    if c == 62:
+                       print("observed a tv")
+                       tvYLocationBottom = int(xyxy[3])
+                    if c == 66:
+                       print("observed a keyboard")
+                       keyboardYLocationBottom = int(xyxy[3])
+                    xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist() #normalized xywh
+                    line = (cls, *xywh, conf) if save_conf else (cls, *xywh) #label format
+                    #print(('%g ' * len(line)).rstrip() % line + '\n')
                     if save_txt:  # Write to file
                         xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
+                        #print(xywh)
                         line = (cls, *xywh, conf) if save_conf else (cls, *xywh)  # label format
+                        #print(('%g ' * len(line)).rstrip() % line + '\n') 
                         with open(txt_path + '.txt', 'a') as f:
                             f.write(('%g ' * len(line)).rstrip() % line + '\n')
 
@@ -179,6 +210,18 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
                         if save_crop:
                             save_one_box(xyxy, imc, file=save_dir / 'crops' / names[c] / f'{p.stem}.jpg', BGR=True)
 
+                print(keyboardYLocationBottom)
+                print(tvYLocationBottom)
+                if keyboardYLocationBottom != 0 and tvYLocationBottom != 0:
+                    if keyboardYLocationBottom < tvYLocationBottom:
+                        print("KEYBOARD IS ABOVE THE TV") 
+                        os.getcwd()
+                        my_sound = pygame.mixer.Sound('no.wav')
+                        my_sound.play()
+                        time.sleep(5)
+                        my_sound.stop() 
+                    else:
+                        print("TV IS ABOVE THE KEYBOARD")
             # Stream results
             im0 = annotator.result()
             if view_img:
@@ -206,7 +249,7 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
 
         # Print time (inference-only)
         LOGGER.info(f'{s}Done. ({t3 - t2:.3f}s)')
-
+    
     # Print results
     t = tuple(x / seen * 1E3 for x in dt)  # speeds per image
     LOGGER.info(f'Speed: %.1fms pre-process, %.1fms inference, %.1fms NMS per image at shape {(1, 3, *imgsz)}' % t)
