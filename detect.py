@@ -48,7 +48,6 @@ from utils.torch_utils import select_device, time_sync
 
 import pygame
 import time 
-pygame.init()
 
 @torch.no_grad()
 def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
@@ -59,7 +58,7 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
         iou_thres=0.45,  # NMS IOU threshold
         max_det=1000,  # maximum detections per image
         device='',  # cuda device, i.e. 0 or 0,1,2,3 or cpu
-        view_img=False,  # show results
+        view_img=True,  # show results
         save_txt=False,  # save results to *.txt
         save_conf=False,  # save confidences in --save-txt labels
         save_crop=False,  # save cropped prediction boxes
@@ -85,6 +84,10 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
     webcam = source.isnumeric() or source.endswith('.txt') or (is_url and not is_file)
     if is_url and is_file:
         source = check_file(source)  # download
+
+    # Sound to play when event happens
+    pygame.init()
+    my_sound = pygame.mixer.Sound('no.wav')
 
     # Directories
     save_dir = increment_path(Path(project) / name, exist_ok=exist_ok)  # increment run
@@ -119,10 +122,9 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
     # Run inference
     model.warmup(imgsz=(1 if pt else bs, 3, *imgsz), half=half)  # warmup
     dt, seen = [0.0, 0.0, 0.0], 0
-    dogYLocationBottom = 0
+
     couchYLocationBottom = 0
-    keyboardYLocationBottom = 0
-    tvYLocationBottom = 0
+    jennyYLocationBottom = 0
 
     for path, im, im0s, vid_cap, s in dataset:
         t1 = time_sync()
@@ -180,18 +182,14 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
                 # Write results
                 for *xyxy, conf, cls in reversed(det):
                     c = int(cls)
-                    if c == 16:
-                       print("observed a dog. Location: ")
-                       dogYLocationBottom = int(xyxy[3])
-                    if c == 57:
-                       print("observed a couch")
+                    if c == 0:
+                       #print("observed a couch")
                        couchYLocationBottom = int(xyxy[3])
-                    if c == 62:
-                       print("observed a tv")
-                       tvYLocationBottom = int(xyxy[3])
-                    if c == 66:
-                       print("observed a keyboard")
-                       keyboardYLocationBottom = int(xyxy[3])
+                       print(couchYLocationBottom)
+                    if c == 1:
+                        #print("observed Jenny")
+                        jennyYLocationBottom = int(xyxy[3])
+                        print(jennyYLocationBottom)
                     xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist() #normalized xywh
                     line = (cls, *xywh, conf) if save_conf else (cls, *xywh) #label format
                     #print(('%g ' * len(line)).rstrip() % line + '\n')
@@ -210,18 +208,14 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
                         if save_crop:
                             save_one_box(xyxy, imc, file=save_dir / 'crops' / names[c] / f'{p.stem}.jpg', BGR=True)
 
-                print(keyboardYLocationBottom)
-                print(tvYLocationBottom)
-                if keyboardYLocationBottom != 0 and tvYLocationBottom != 0:
-                    if keyboardYLocationBottom < tvYLocationBottom:
-                        print("KEYBOARD IS ABOVE THE TV") 
-                        os.getcwd()
-                        my_sound = pygame.mixer.Sound('no.wav')
+                if jennyYLocationBottom != 0 and couchYLocationBottom != 0:
+                    if jennyYLocationBottom + 80 < couchYLocationBottom:
+                        print("JENNY IS ON THE COUCH - SCREAM!")
                         my_sound.play()
-                        time.sleep(5)
-                        my_sound.stop() 
-                    else:
-                        print("TV IS ABOVE THE KEYBOARD")
+                        time.sleep(3)
+                        my_sound.stop()
+                couchYLocationBottom = 0
+                jennyYLocationBottom = 0
             # Stream results
             im0 = annotator.result()
             if view_img:
