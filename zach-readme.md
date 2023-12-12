@@ -27,3 +27,11 @@ Also worth noting - I think the y axis is the reverse of what I think it would b
 57 - is couch
 
 I think what I want to change is in 168-173 of detect.py - grab 16 and 57 and use that 
+
+command to run (next need to generate a .pt file with Jenny and the couch later with infrared and normal light for better detection): 
+python3 detect.py --source 0 --weights yolov5s.pt --conf 0.25
+
+
+training command:
+python3 train.py --img 640 --batch 2 --epochs 60 --data data/coco128.yaml --weights yolov5s.pt
+
